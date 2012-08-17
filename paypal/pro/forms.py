@@ -18,16 +18,37 @@ class PaymentForm(forms.Form):
     expdate = CreditCardExpiryField(label="Expiration Date")
     cvv2 = CreditCardCVV2Field(label="Card Security Code")
 
+#    def process(self, request, item):
+#        """Process a PayPal direct payment."""
+#        from paypal.pro.helpers import PayPalWPP
+#        wpp = PayPalWPP(request)
+#        params = self.cleaned_data
+#        params['creditcardtype'] = self.fields['acct'].card_type
+#        params['expdate'] = self.cleaned_data['expdate'].strftime("%m%Y")
+#        params['ipaddress'] = request.META.get("REMOTE_ADDR", "")
+#        params.update(item)
+#
+#        try:
+#            # Create single payment:
+#            if 'billingperiod' not in params:
+#                nvp_obj = wpp.doDirectPayment(params)
+#            # Create recurring payment:
+#            else:
+#                nvp_obj = wpp.createRecurringPaymentsProfile(params, direct=True)
+#        except PayPalFailure:
+#            return False
+#        return True
+
     def process(self, request, item):
         """Process a PayPal direct payment."""
         from paypal.pro.helpers import PayPalWPP
-        wpp = PayPalWPP(request) 
+        wpp = PayPalWPP(request)
         params = self.cleaned_data
         params['creditcardtype'] = self.fields['acct'].card_type
         params['expdate'] = self.cleaned_data['expdate'].strftime("%m%Y")
         params['ipaddress'] = request.META.get("REMOTE_ADDR", "")
         params.update(item)
-
+        response_dict = {}
         try:
             # Create single payment:
             if 'billingperiod' not in params:
@@ -35,9 +56,14 @@ class PaymentForm(forms.Form):
             # Create recurring payment:
             else:
                 nvp_obj = wpp.createRecurringPaymentsProfile(params, direct=True)
-        except PayPalFailure:
-            return False
-        return True
+        except PayPalFailure, e:
+            response_dict['success'] = False
+            response_dict['error'] = str(e)
+            return response_dict
+
+        response_dict['success'] = True
+
+        return response_dict
 
 class ConfirmForm(forms.Form):
     """Hidden form used by ExpressPay flow to keep track of payer information."""
